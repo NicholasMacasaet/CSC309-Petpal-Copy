@@ -1,0 +1,96 @@
+# This text file should explain how to deploy your website.
+
+# You should write detailed description on:
+
+# 1. All the packages you need to install
+
+This setup assums a machine running on Ubuntu 22.04.3 LTS.
+
+--Necessary packages and installation--:
+
+Backend:
+Run the following commands to install the required packages.
+- sudo apt-get install python3-pip 
+- sudo pip3 install mod-wsgi gunicorn virtualenv
+
+First, clone the repository onto the machine running Ubuntu 22.04.3 LTS using
+- git clone https://markus.teach.cs.toronto.edu/git/2023-09/csc309/group_3772
+
+In the directory ~/group_3772/P3/ create a virtual environment using this command.
+- virtualenv venv
+
+Activate the virtual environment by running the following.
+- source ./venv/bin/activate
+
+Now, under ~/group_3772/P3/backend/ install the required Python packages with the following.
+- pip3 install -r requirements.txt
+
+Frontend:
+First, run the following commands to get the neccsary packages for the frotnend.
+- sudo apt install nodejs npm
+- sudo apt install nginx  
+
+CD into ~/group_3772/P3/frontend/petpal/ and run the following command.
+- npm i
+
+Under the same directory ~/group_3772/P3/frontend/petpal/, run the following command 
+to build the react project.
+- npm run build
+
+# 2. How to configure various servers (e.g., Nginx, Apache, etc)
+
+Gunicorn:
+Create a service file for Gunicorn by doing the following.
+- sudo nano /etc/systemd/system/gunicorn.service
+
+The file should contain the following content not including the *START* and *END*.
+*START*
+[Unit]
+Description=gunicorn daemon for petpal
+After=network.target
+
+[Service]
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu/group_3772/P3/backend/petpal
+ExecStart=/home/ubuntu/group_3772/P3/venv/bin/gunicorn --bind 0.0.0.0:8000 petpal.wsgi:application
+
+[Install]
+WantedBy=multi-user.target
+*END*
+
+Then, the Django server can be run with
+- sudo systemctl start gunicorn
+- sudo systemctl enable gunicorn
+
+Nginx:
+Create a config file by running the following.
+- sudo nano /etc/nginx/sites-enabled/react_petpal
+
+The file should contain the following content not including the *START* and *END*.
+*START*
+server {
+    listen 80;
+    server_name 3.143.68.230;
+
+    root /home/ubuntu/group_3772/P3/frontend/petpal/build;
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    location /media/ {
+        alias /home/ubuntu/group_3772/P3/backend/petpal/media/;
+    }
+}
+*END*
+
+Create a symbolic link like so.
+- sudo ln -s /etc/nginx/sites-available/react_petpal /etc/nginx/sites-enabled/
+
+Then, restart Nginx with the following commands.
+- sudo nginx -t
+- sudo systemctl restart nginx
+
+At this point, the server should now be reachable by the ipv4 of the host machine, without needing to specify
+a port because we set up Nginx to run on port 80.
